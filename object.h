@@ -33,7 +33,7 @@ typedef struct
     SDL_Rect object_rect;
     SDL_Texture* texture;
 
-    int isRender;
+    int isRender,renderN;
 }Object;
 
 typedef struct
@@ -43,14 +43,14 @@ typedef struct
 
 int collision(int x1,int y1,int width1,int height1,int x2,int y2,int width2,int height2)
 {
-    if(y1 + height1 > y2 && y1 + height1 < y2 + height2 && x1 + width1 > x2 && x1 < x2 + width2 || //stand
-       x1 < x2 + width2 && x1 + width1 > x2 && y1 < y2 + height2 && y1 > y2) //
+    if((y1 + height1 > y2 && y1 + height1 < y2 + height2 && x1 + width1 > x2 && x1 < x2 + width2) || //stand
+       (x1 < x2 + width2 && x1 + width1 > x2 && y1 < y2 + height2 && y1 > y2)) //
     {
         return 1;
     }
     
-    if(y1 < y2 + height2 && y1 + height1 > y2 && x1 <= x2 + width2 && x1 >= x2 || //left
-        y1 < y2 + height2 && y1 + height1 > y2 && x1 + width1 >= x2 && x1 + width1 <= x2 + width2)//right
+    if((y1 < y2 + height2 && y1 + height1 > y2 && x1 < x2 + width2 && x1 > x2) || //left
+        (y1 < y2 + height2 && y1 + height1 > y2 && x1 + width1 > x2 && x1 + width1 < x2 + width2))//right
     {
         return 1;
     }
@@ -125,10 +125,11 @@ void object_render(Object* object,int way,SDL_Renderer* renderer)
 
 void object_updata(Object* object)
 {
+    object_information[object->objectN][OBJECT_INFORMATION_RENDER] = object->isRender;
+    
     if(!object->isRender)
         return;
     
-    object_information[object->objectN][OBJECT_INFORMATION_RENDER] = object->isRender;
     object_information[object->objectN][OBJECT_INFORMATION_X] = object->x;
     object_information[object->objectN][OBJECT_INFORMATION_Y] = object->y;
     object_information[object->objectN][OBJECT_INFORMATION_DX] = object->dx;

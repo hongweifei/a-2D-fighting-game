@@ -114,6 +114,7 @@ void man_stand(Man* man,int way)
     
     man->state[MAN_STATE_HURT] = 0;
     man->state[MAN_STATE_STAND] = 1;
+    man->state[MAN_STATE_WALK] = 0;
     man->state[MAN_STATE_RUN] = 0;
 
     man->way = way;
@@ -231,7 +232,6 @@ void man_walk(Man* man,int way)
                 if(man->y < object_y + object_dy + object_height && man->y + man->height > object_y + object_dy
                 && man->x <= object_x + object_dx + object_width && man->x >= object_x + object_dx)
                 {
-                    man->state[MAN_STATE_WALK] = 0;
                     return;
                 }
             }
@@ -256,7 +256,6 @@ void man_walk(Man* man,int way)
                 if(man->y < object_y + object_dy + object_height && man->y + man->height > object_y + object_dy
                 && man->x + man->width >= object_x + object_dx && man->x + man->width <= object_x + object_dx + object_width)
                 {
-                    man->state[MAN_STATE_WALK] = 0;
                     return;
                 }
             }
@@ -279,6 +278,7 @@ void man_run(Man* man,int way)
     man->state[MAN_STATE_HURT] = 0;
     man->state[MAN_STATE_STAND] = 0;
     man->state[MAN_STATE_DROP] = 1;
+    man->state[MAN_STATE_WALK] = 0;
     man->state[MAN_STATE_RUN] = 1;
 
     man->way = way;
@@ -413,7 +413,7 @@ void man_die(Man* man)
 {
     int i;
     
-    for(i = 0; i < MAN_STATE_N - 1; i++)
+    for(i = 0; i < MAN_STATE_N; i++)
     {
         man->state[i] = 0;
     }
@@ -455,7 +455,6 @@ void man_updata(Man* man)
     {
         man_hurt(man);
     }
-    
     else if(man->state[MAN_STATE_STAND])
     {
         man_stand(man,man->way);
