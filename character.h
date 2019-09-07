@@ -13,10 +13,24 @@
 #define CHARACTER_STATE_N 3
 #define CHARACTER_STATE_ATTACK 0
 #define CHARACTER_STATE_ATTACK_SKILL 1
-#define CHARACTER_STATE_ATTACK_DISTANCE_SKILL 2
+#define CHARACTER_STATE_ATTACK_SKILL_DISTANCE 2
+
+#define CHARACTER_SKILL_ONE 0
+#define CHARACTER_SKILL_TWO 1
+#define CHARACTER_SKILL_THREE 2
+#define CHARACTER_SKILL_FOUR 3
+#define CHARACTER_SKILL_FIVE 4
 
 int characterN = 0;
 int** character_information;
+
+typedef struct 
+{
+    Object* object;
+    SDL_Rect* skill_object_spirit_rect;
+    int characterN,characterN_change;
+    int objectN,objectN_change;
+}Skill_Object;
 
 typedef struct
 {
@@ -26,17 +40,12 @@ typedef struct
     char* name;
     int HP;
     int MP;
+    int ATK,DEF;
     int* state;
     SDL_Texture* texture;
+    Skill_Object** skill;
+    int* skill_speed;
 }Character;
-
-typedef struct 
-{
-    Object* object;
-    SDL_Rect* skill_object_spirit_rect;
-    int characterN,characterN_change;
-    int objectN,objectN_change;
-}Skill_Object;
 
 Skill_Object* skill_object_new(int x,int y,int width,int height,const char* texture_path,SDL_Renderer* renderer,
                                 Uint8 r,Uint8 g,Uint8 b,Uint8 a,SDL_Rect* skill_object_spirit_rect)
@@ -156,18 +165,18 @@ void skill_object_updata(Skill_Object* skill_object)
     }
 }
 
-Character* character_new(char* name,int HP,int MP,int x,int y,int width,int height,
+Character* character_new(char* name,int HP,int MP,int ATK,int DEF,int x,int y,int width,int height,
                         const char* texture_path,SDL_Renderer* renderer,Uint8 r,Uint8 g,Uint8 b,Uint8 a)
 {
     if(!characterN)
-        character_information = (int**)calloc(1,sizeof(int*));
+        character_information = (int**)calloc(characterN + 1,sizeof(int*));
     else
         character_information = (int**)realloc(character_information,sizeof(int*));
 
     character_information[characterN] = (int*)calloc(CHARACTER_INFORMATION_N,sizeof(int));
 
     Character* character = (Character*)calloc(1,sizeof(Character));
-    character->state = (int*)malloc(sizeof(int) * CHARACTER_STATE_N);
+    character->state = (int*)calloc(CHARACTER_STATE_N,sizeof(int));
     
     character->N = characterN;
     
@@ -176,9 +185,11 @@ Character* character_new(char* name,int HP,int MP,int x,int y,int width,int heig
     character->name = name;
     character->HP = HP;
     character->MP = MP;
+    character->ATK = ATK;
+    character->DEF = DEF;
     character->state[CHARACTER_STATE_ATTACK] = 0;
     character->state[CHARACTER_STATE_ATTACK_SKILL] = 0;
-    character->state[CHARACTER_STATE_ATTACK_DISTANCE_SKILL] = 0;
+    character->state[CHARACTER_STATE_ATTACK_SKILL_DISTANCE] = 0;
     
     SDL_Surface* surface= IMG_Load(texture_path);
     SDL_SetColorKey(surface,SDL_TRUE,SDL_MapRGBA(surface->format,r,g,b,a));
@@ -194,9 +205,9 @@ Character* character_new(char* name,int HP,int MP,int x,int y,int width,int heig
     return character;
 }
 
-int Character_attack(Character* character,int way)
+int character_attack(Character* character,int way,int hurt)
 {
-    int i;
+    int i,j;
     
     if(character->man->state[MAN_STATE_DIE])
     {
@@ -204,7 +215,10 @@ int Character_attack(Character* character,int way)
     }
     
     character->man->state[MAN_STATE_WALK] = 0;
+    character->man->state[MAN_STATE_RUN] = 0;
     character->man->state[MAN_STATE_HURT] = 0;
+    
+    character->state[CHARACTER_STATE_ATTACK] = 1;
 
     character->man->way = way;
 
@@ -221,10 +235,22 @@ int Character_attack(Character* character,int way)
             {
                 if(man_information[i][MAN_INFORMATION_RENDER])
                 {
-                    if(character->man->y < man_information[i][MAN_INFORMATION_DY] && character->man->dy > man_information[i][MAN_INFORMATION_Y]
-                    && character->man->x <= man_information[i][MAN_INFORMATION_DX] && character->man->x >= man_information[i][MAN_INFORMATION_X])
+                    int man_x = man_information[i][MAN_INFORMATION_X] + man_information[i][MAN_INFORMATION_DX];
+                    int man_y = man_information[i][MAN_INFORMATION_Y] + man_information[i][MAN_INFORMATION_DY];
+                    int man_width = man_information[i][MAN_INFORMATION_WIDTH];
+                    int man_height = man_information[i][MAN_INFORMATION_HEIGHT];
+                    
+                    if(character->man->y < man_y + man_height && character->man->y + character->man->height > man_y
+                    && character->man->x <= man_x + man_width && character->man->x >= man_x)
                     {
                         man_information[i][MAN_INFORMATION_STATE_HURT] = 1;
+                        for(j = 0;j < characterN;j++)
+                        {
+                            if(man_information[i][MAN_INFORMATION_MAN_N] == character_information[j][CHARACTER_INFORMATION_MAN_N])
+                            {
+                                character_information[j][CHARACTER_INFORMATION_HP] -= hurt;
+                            }
+                        }
                         return 1;
                     }
                 }
@@ -239,10 +265,22 @@ int Character_attack(Character* character,int way)
             {
                 if(man_information[i][MAN_INFORMATION_RENDER])
                 {
-                    if(character->man->y < man_information[i][MAN_INFORMATION_DY] && character->man->dy > man_information[i][MAN_INFORMATION_Y]
-                    && character->man->dx >= man_information[i][MAN_INFORMATION_X] && character->man->dx <= man_information[i][MAN_INFORMATION_DX])
+                    int man_x = man_information[i][MAN_INFORMATION_X] + man_information[i][MAN_INFORMATION_DX];
+                    int man_y = man_information[i][MAN_INFORMATION_Y] + man_information[i][MAN_INFORMATION_DY];
+                    int man_width = man_information[i][MAN_INFORMATION_WIDTH];
+                    int man_height = man_information[i][MAN_INFORMATION_HEIGHT];
+                    
+                    if(character->man->y < man_y + man_height && character->man->y + character->man->height> man_y
+                    && character->man->x + character->man->width >= man_x && character->man->x + character->man->width <= man_x + man_width)
                     {
                         man_information[i][MAN_INFORMATION_STATE_HURT] = 1;
+                        for(j = 0;j < characterN;j++)
+                        {
+                            if(man_information[i][MAN_INFORMATION_MAN_N] == character_information[j][CHARACTER_INFORMATION_MAN_N])
+                            {
+                                character_information[j][CHARACTER_INFORMATION_HP] -= hurt;
+                            }
+                        }
                         return 1;
                     }
                 }
@@ -253,19 +291,23 @@ int Character_attack(Character* character,int way)
     return 0;
 }
 
-int Character_attack_skill(Character* character,int way)
+int character_attack_skill(Character* character,int way)
 {
+    character->state[CHARACTER_STATE_ATTACK_SKILL] = 1;
+    
     character->man->way = way;
     
     //collision(character->man->x,character->man->y,character->man->width,character->man->height,
     //         int x2,int y2,int width2,int height2)
 }
 
-int Character_attack_distance_skill(Character* character,int way,int hurt,int speed,Skill_Object* skill,SDL_Renderer* renderer)
+int character_attack_skill_distance(Character* character,int way,int hurt,int speed,Skill_Object* skill,SDL_Renderer* renderer)
 {
     if(skill == NULL)
         return 0;
 
+    character->state[CHARACTER_STATE_ATTACK_SKILL_DISTANCE] = 1;
+    
     if(skill_object_collision(skill))
     {
         if(skill->characterN_change)
@@ -274,13 +316,13 @@ int Character_attack_distance_skill(Character* character,int way,int hurt,int sp
             
             character_information[skill->characterN][CHARACTER_INFORMATION_HP] -= hurt;
             man_information[hurt_man_N][MAN_INFORMATION_STATE_HURT] = 1;
-            character->state[CHARACTER_STATE_ATTACK_DISTANCE_SKILL] = 0;
+            character->state[CHARACTER_STATE_ATTACK_SKILL_DISTANCE] = 0;
             skill->characterN_change = 0;
             skill->object->isRender = 0;
         }
         if(skill->objectN_change)
         {
-            character->state[CHARACTER_STATE_ATTACK_DISTANCE_SKILL] = 0;
+            character->state[CHARACTER_STATE_ATTACK_SKILL_DISTANCE] = 0;
             skill->objectN_change = 0;
             skill->object->isRender = 0;
         }
@@ -331,7 +373,12 @@ int Character_attack_distance_skill(Character* character,int way,int hurt,int sp
     return 0;
 }
 
-void character_updata(Character* character)
+void character_render(Character* character,int way,SDL_Renderer* renderer,SDL_Texture* texture,SDL_Rect* spirit_rect,int begin_n,int end_n)
+{
+    man_render(character->man,way,renderer,texture,spirit_rect,begin_n,end_n);
+}
+
+void character_updata(Character* character,SDL_Renderer* renderer)
 {
     man_updata(character->man);
     character->HP = character_information[character->N][CHARACTER_INFORMATION_HP];
@@ -339,6 +386,8 @@ void character_updata(Character* character)
     
     if(character->HP <= 0)
         man_die(character->man);
+    else if(character->state[CHARACTER_STATE_ATTACK])
+        character_attack(character,character->man->way,character->ATK);
 }
 
 #endif // CHARACTER_H_INCLUDED

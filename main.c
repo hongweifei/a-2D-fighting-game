@@ -4,8 +4,7 @@
 
 int main()
 {
-    init_window();
-    init_game();
+    init_game(init_window());
     start_game();
     quit_game();
 

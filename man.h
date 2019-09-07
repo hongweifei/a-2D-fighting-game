@@ -22,15 +22,16 @@
 #define MAN_WALK_SPEED 1
 #define MAN_RUN_SPEED 2
 
-#define MAN_INFORMATION_N 8
-#define MAN_INFORMATION_X 0
-#define MAN_INFORMATION_Y 1
-#define MAN_INFORMATION_DX 2
-#define MAN_INFORMATION_DY 3
-#define MAN_INFORMATION_WIDTH 4
-#define MAN_INFORMATION_HEIGHT 5
-#define MAN_INFORMATION_STATE_HURT 6
-#define MAN_INFORMATION_RENDER 7
+#define MAN_INFORMATION_N 9
+#define MAN_INFORMATION_MAN_N 0
+#define MAN_INFORMATION_X 1
+#define MAN_INFORMATION_Y 2
+#define MAN_INFORMATION_DX 3
+#define MAN_INFORMATION_DY 4
+#define MAN_INFORMATION_WIDTH 5
+#define MAN_INFORMATION_HEIGHT 6
+#define MAN_INFORMATION_STATE_HURT 7
+#define MAN_INFORMATION_RENDER 8
 
 int manN = 0;
 int** man_information;
@@ -38,7 +39,7 @@ int** man_information;
 typedef struct
 {
     int N;
-    int isRender,renderN;
+    int isRender,renderN,renderN_before;
     
     float x,y;
     float dx,dy;
@@ -57,17 +58,18 @@ void man_run(Man* man,int way);
 Man* man_new(int x,int y,int width,int height)
 {
     if(manN == 0)
-        man_information = (int**)malloc(sizeof(int*) * (manN + 1));
+        man_information = (int**)calloc(manN + 1,sizeof(int*));
     else
         man_information = (int**)realloc(man_information,sizeof(int*) * (manN + 1));
     
-    man_information[manN] = (int*)malloc(sizeof(int) * MAN_INFORMATION_N);
+    man_information[manN] = (int*)calloc(MAN_INFORMATION_N,sizeof(int));
     
     Man* man = (Man*)calloc(1,sizeof(Man));
     man->state = (int*)calloc(MAN_STATE_N,sizeof(int));
 
     man->N = manN;
     man->isRender = 0;
+    man->renderN_before = 0;
     
     man->x = x;
     man->y = y;
@@ -90,6 +92,7 @@ Man* man_new(int x,int y,int width,int height)
     man->man_rect.w = width;
     man->man_rect.h = height;
     
+    man_information[manN][MAN_INFORMATION_MAN_N] = man->N;
     man_information[manN][MAN_INFORMATION_X] = man->x;
     man_information[manN][MAN_INFORMATION_Y] = man->y;
     man_information[manN][MAN_INFORMATION_DX] = man->dx;
@@ -123,15 +126,13 @@ void man_stand(Man* man,int way)
     {
         if(object_information[i][OBJECT_INFORMATION_RENDER])
         {
-            int object_x = object_information[i][OBJECT_INFORMATION_X];
-            int object_y = object_information[i][OBJECT_INFORMATION_Y];
-            int object_dx = object_information[i][OBJECT_INFORMATION_DX];
-            int object_dy = object_information[i][OBJECT_INFORMATION_DY];
+            int object_x = object_information[i][OBJECT_INFORMATION_X] + object_information[i][OBJECT_INFORMATION_DX];
+            int object_y = object_information[i][OBJECT_INFORMATION_Y] + object_information[i][OBJECT_INFORMATION_DY];
             int object_width = object_information[i][OBJECT_INFORMATION_WIDTH];
             int object_height = object_information[i][OBJECT_INFORMATION_HEIGHT];
-            if(man->y + man->height >= object_y + object_dy && man->y + man->height <= object_y + object_dy + object_height)
+            if(man->y + man->height >= object_y && man->y + man->height <= object_y + object_height)
             {
-                if(man->x + man->width < object_x + object_dx || man->x > object_x + object_dx + object_width)
+                if(man->x + man->width < object_x || man->x > object_x + object_width)
                 {
                     man->state[MAN_STATE_STAND] = 0;
                     man->state[MAN_STATE_DROP] = 1;
@@ -157,25 +158,23 @@ void man_drop(Man* man,int way)
     {
         if(object_information[i][OBJECT_INFORMATION_RENDER])
         {
-            int object_x = object_information[i][OBJECT_INFORMATION_X];
-            int object_y = object_information[i][OBJECT_INFORMATION_Y];
-            int object_dx = object_information[i][OBJECT_INFORMATION_DX];
-            int object_dy = object_information[i][OBJECT_INFORMATION_DY];
+            int object_x = object_information[i][OBJECT_INFORMATION_X] + object_information[i][OBJECT_INFORMATION_DX];
+            int object_y = object_information[i][OBJECT_INFORMATION_Y] + object_information[i][OBJECT_INFORMATION_DY];
             int object_width = object_information[i][OBJECT_INFORMATION_WIDTH];
             int object_height = object_information[i][OBJECT_INFORMATION_HEIGHT];
             
-            if(man->y + man->height >= object_y + object_dy && man->y + man->height <= object_y + object_dy + object_height)
+            if(man->y + man->height >= object_y && man->y + man->height <= object_y + object_height)
             {
                 /*
-                if(man->y >= object_y + object_dy + object_height && man->y <= object_y + object_dy)
+                if(man->y >= object_y + object_height && man->y <= object_y)
                 {
                     man->dy = 1;
                 }
                 */
 
-                if(man->x + man->width >= object_x + object_dx && man->x <= object_x + object_dx + object_width)
+                if(man->x + man->width >= object_x && man->x <= object_x + object_width)
                 {
-                    man->dy = -(man->y - (object_y + object_dy - man->height));
+                    man->dy = -(man->y - (object_y - man->height));
                     
                     man->state[MAN_STATE_DROP] = 0;
                     man->dropN = 1;
@@ -222,15 +221,13 @@ void man_walk(Man* man,int way)
         {
             if(object_information[i][OBJECT_INFORMATION_RENDER])
             {
-                int object_x = object_information[i][OBJECT_INFORMATION_X];
-                int object_y = object_information[i][OBJECT_INFORMATION_Y];
-                int object_dx = object_information[i][OBJECT_INFORMATION_DX];
-                int object_dy = object_information[i][OBJECT_INFORMATION_DY];
+                int object_x = object_information[i][OBJECT_INFORMATION_X] + object_information[i][OBJECT_INFORMATION_DX];
+                int object_y = object_information[i][OBJECT_INFORMATION_Y] + object_information[i][OBJECT_INFORMATION_DY];
                 int object_width = object_information[i][OBJECT_INFORMATION_WIDTH];
                 int object_height = object_information[i][OBJECT_INFORMATION_HEIGHT];
                 
-                if(man->y < object_y + object_dy + object_height && man->y + man->height > object_y + object_dy
-                && man->x <= object_x + object_dx + object_width && man->x >= object_x + object_dx)
+                if(man->y < object_y + object_height && man->y + man->height > object_y
+                && man->x <= object_x + object_width && man->x >= object_x)
                 {
                     return;
                 }
@@ -246,15 +243,13 @@ void man_walk(Man* man,int way)
         {
             if(object_information[i][OBJECT_INFORMATION_RENDER])
             {
-                int object_x = object_information[i][OBJECT_INFORMATION_X];
-                int object_y = object_information[i][OBJECT_INFORMATION_Y];
-                int object_dx = object_information[i][OBJECT_INFORMATION_DX];
-                int object_dy = object_information[i][OBJECT_INFORMATION_DY];
+                int object_x = object_information[i][OBJECT_INFORMATION_X] + object_information[i][OBJECT_INFORMATION_DX];
+                int object_y = object_information[i][OBJECT_INFORMATION_Y] + object_information[i][OBJECT_INFORMATION_DY];
                 int object_width = object_information[i][OBJECT_INFORMATION_WIDTH];
                 int object_height = object_information[i][OBJECT_INFORMATION_HEIGHT];
                 
-                if(man->y < object_y + object_dy + object_height && man->y + man->height > object_y + object_dy
-                && man->x + man->width >= object_x + object_dx && man->x + man->width <= object_x + object_dx + object_width)
+                if(man->y < object_y + object_height && man->y + man->height > object_y
+                && man->x + man->width >= object_x && man->x + man->width <= object_x + object_width)
                 {
                     return;
                 }
@@ -289,15 +284,13 @@ void man_run(Man* man,int way)
         {
             if(object_information[i][OBJECT_INFORMATION_RENDER])
             {
-                int object_x = object_information[i][OBJECT_INFORMATION_X];
-                int object_y = object_information[i][OBJECT_INFORMATION_Y];
-                int object_dx = object_information[i][OBJECT_INFORMATION_DX];
-                int object_dy = object_information[i][OBJECT_INFORMATION_DY];
+                int object_x = object_information[i][OBJECT_INFORMATION_X] + object_information[i][OBJECT_INFORMATION_DX];
+                int object_y = object_information[i][OBJECT_INFORMATION_Y] + object_information[i][OBJECT_INFORMATION_DY];
                 int object_width = object_information[i][OBJECT_INFORMATION_WIDTH];
                 int object_height = object_information[i][OBJECT_INFORMATION_HEIGHT];
                 
-                if(man->y < object_y + object_dy + object_height && man->y + man->height > object_y + object_dy
-                && man->x <= object_x + object_dx + object_width && man->x > object_x + object_dx)
+                if(man->y < object_y + object_height && man->y + man->height > object_y
+                && man->x <= object_x + object_width && man->x > object_x)
                 {
                     printf("run left collision\n");
                     return;
@@ -315,18 +308,19 @@ void man_run(Man* man,int way)
         {
             if(object_information[i][OBJECT_INFORMATION_RENDER])
             {
-                int object_x = object_information[i][OBJECT_INFORMATION_X];
-                int object_y = object_information[i][OBJECT_INFORMATION_Y];
-                int object_dx = object_information[i][OBJECT_INFORMATION_DX];
-                int object_dy = object_information[i][OBJECT_INFORMATION_DY];
+                int object_x = object_information[i][OBJECT_INFORMATION_X] + object_information[i][OBJECT_INFORMATION_DX];
+                int object_y = object_information[i][OBJECT_INFORMATION_Y] + object_information[i][OBJECT_INFORMATION_DY];
                 int object_width = object_information[i][OBJECT_INFORMATION_WIDTH];
                 int object_height = object_information[i][OBJECT_INFORMATION_HEIGHT];
                 
-                if(man->y < object_y + object_dy + object_height && man->y + man->height > object_y + object_dy
-                && man->x + man->width >= object_x + object_dx && man->x + man->width < object_x + object_dx + object_width)
+                if((man->y < object_y + object_height && man->y + man->height > object_y) || 
+                (man->y > object_y && man->y + man->height < object_y + object_height))
                 {
-                    printf("run right collision\n");
-                    return;
+                    if(man->x + man->width >= object_x && man->x + man->width < object_x + object_width)
+                    {
+                        printf("run right collision\n");
+                        return;
+                    }
                 }
             }
         }
@@ -359,15 +353,13 @@ void man_jump(Man *man,int way)
         {
             if(object_information[i][OBJECT_INFORMATION_RENDER])
             {
-                int object_x = object_information[i][OBJECT_INFORMATION_X];
-                int object_y = object_information[i][OBJECT_INFORMATION_Y];
-                int object_dx = object_information[i][OBJECT_INFORMATION_DX];
-                int object_dy = object_information[i][OBJECT_INFORMATION_DY];
+                int object_x = object_information[i][OBJECT_INFORMATION_X] + object_information[i][OBJECT_INFORMATION_DX];
+                int object_y = object_information[i][OBJECT_INFORMATION_Y] + object_information[i][OBJECT_INFORMATION_DY];
                 int object_width = object_information[i][OBJECT_INFORMATION_WIDTH];
                 int object_height = object_information[i][OBJECT_INFORMATION_HEIGHT];
                 
-                if(man->y >= object_y + object_dy + object_height && man->y <= object_y + object_dy
-                && man->x + man->width >= object_x + object_dx && man->x <= object_x + object_dx + object_width)
+                if(man->y >= object_y + object_height && man->y <= object_y
+                && man->x + man->width >= object_x && man->x <= object_x + object_width)
                 {
                     man->dy = - 1;
                     man->state[MAN_STATE_JUMP] = 0;
@@ -433,6 +425,11 @@ void man_render(Man* man,int way,SDL_Renderer* renderer,SDL_Texture* texture,SDL
         man->way = way;
         man->spirit_rect = spirit_rect;
         
+        if(begin_n != man->renderN_before)
+        {
+            man->renderN_before = begin_n;
+            man->renderN = begin_n;
+        }
         if(man->renderN < end_n)
             man->renderN++;
         else
@@ -442,6 +439,7 @@ void man_render(Man* man,int way,SDL_Renderer* renderer,SDL_Texture* texture,SDL
             SDL_RenderCopyEx(renderer,texture,&man->spirit_rect[man->renderN],&man->man_rect,0,NULL,SDL_FLIP_HORIZONTAL);
         else if(way == WAY_RIGHT)
             SDL_RenderCopy(renderer,texture,&man->spirit_rect[man->renderN],&man->man_rect);
+        
         man->isRender = 1;
     }
 }
@@ -451,9 +449,15 @@ void man_updata(Man* man)
     if(!man->isRender)
         return;
     
+    if(man->state[MAN_STATE_DIE])
+    {
+        man_drop(man,man->way);
+    }
+    
     if(man_information[man->N][MAN_INFORMATION_STATE_HURT])
     {
         man_hurt(man);
+        man_drop(man,man->way);
     }
     else if(man->state[MAN_STATE_STAND])
     {
@@ -496,6 +500,8 @@ void man_updata(Man* man)
     man->man_rect.y = man->y;
     man->man_rect.w = man->width;
     man->man_rect.h = man->height;
+    
+    man->isRender = 0;
 }
 
 SDL_Rect* init_spirit_rect(int width,int height,int begin_x,int begin_y,unsigned int n,unsigned int m)

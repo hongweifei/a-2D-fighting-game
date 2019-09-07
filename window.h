@@ -8,12 +8,14 @@
 #define WIDTH 800
 #define HEIGHT 600
 
-static SDL_Window *window = NULL;
+static SDL_Window* window = NULL;
 
-void init_window()
+SDL_Window* init_window()
 {
-    SDL_Init(SDL_INIT_EVERYTHING);
+    SDL_Init(SDL_INIT_TIMER || SDL_INIT_GAMECONTROLLER || SDL_INIT_EVENTS);
     window = SDL_CreateWindow(TITLE,SDL_WINDOWPOS_CENTERED,SDL_WINDOWPOS_CENTERED,WIDTH,HEIGHT,SDL_WINDOW_SHOWN);
+    
+    return window;
 }
 
 #endif // WINDOW_H_INCLUDED
