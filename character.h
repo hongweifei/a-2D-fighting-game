@@ -5,10 +5,11 @@
 #ifndef CHARACTER_H_INCLUDED
 #define CHARACTER_H_INCLUDED
 
-#define CHARACTER_INFORMATION_N 3
+#define CHARACTER_INFORMATION_N 4
 #define CHARACTER_INFORMATION_MAN_N 0
 #define CHARACTER_INFORMATION_HP 1
 #define CHARACTER_INFORMATION_MP 2
+#define CHARACTER_INFORMATION_STATE_ATTACK_SKILL_DISTANCE 3
 
 #define CHARACTER_STATE_N 3
 #define CHARACTER_STATE_ATTACK 0
@@ -28,6 +29,12 @@ typedef struct
 {
     Object* object;
     SDL_Rect* skill_object_spirit_rect;
+    
+    int way;
+    int speed;
+    int ATK;
+    int userN;
+    
     int characterN,characterN_change;
     int objectN,objectN_change;
 }Skill_Object;
@@ -47,7 +54,7 @@ typedef struct
     int* skill_speed;
 }Character;
 
-Skill_Object* skill_object_new(int x,int y,int width,int height,const char* texture_path,SDL_Renderer* renderer,
+Skill_Object* skill_object_new(int x,int y,int width,int height,int speed,int ATK,const char* texture_path,SDL_Renderer* renderer,
                                 Uint8 r,Uint8 g,Uint8 b,Uint8 a,SDL_Rect* skill_object_spirit_rect)
 {
     Skill_Object* skill_object = (Skill_Object*)calloc(1,sizeof(Skill_Object));
@@ -57,6 +64,11 @@ Skill_Object* skill_object_new(int x,int y,int width,int height,const char* text
     if(skill_object_spirit_rect != NULL)
         skill_object->skill_object_spirit_rect = skill_object_spirit_rect;
 
+    skill_object->way = WAY_RIGHT;
+    skill_object->speed = speed;
+    skill_object->ATK = ATK;
+    skill_object->userN = 9999;
+    
     skill_object->object->renderN = 0;
 
     return skill_object;
@@ -157,12 +169,41 @@ int skill_object_collision(Skill_Object* skill_object)
 
 void skill_object_updata(Skill_Object* skill_object)
 {
-    object_updata(skill_object->object);
+    if(!skill_object->object->isRender)
+        return;
     
-    if(skill_object->object->isRender)
+    if(skill_object_collision(skill_object))
     {
-        skill_object->object->renderN++;
+        if(skill_object->characterN_change)
+        {
+            int hurt_man_N = character_information[skill_object->characterN][CHARACTER_INFORMATION_MAN_N];
+            
+            character_information[skill_object->characterN][CHARACTER_INFORMATION_HP] -= skill_object->ATK;
+            man_information[hurt_man_N][MAN_INFORMATION_STATE_HURT] = 1;
+            skill_object->characterN_change = 0;
+            skill_object->object->isRender = 0;
+        }
+        if(skill_object->objectN_change)
+        {
+            skill_object->objectN_change = 0;
+            skill_object->object->isRender = 0;
+        }
+        
+        character_information[skill_object->userN][CHARACTER_INFORMATION_STATE_ATTACK_SKILL_DISTANCE] = 0;
     }
+    else
+    {
+        if(skill_object->way == WAY_LEFT)
+        {
+            skill_object->object->dx = -skill_object->speed;
+        }
+        else if(skill_object->way == WAY_RIGHT)
+        {
+            skill_object->object->dx = skill_object->speed;
+        }
+    }
+    
+    object_updata(skill_object->object);
 }
 
 Character* character_new(char* name,int HP,int MP,int ATK,int DEF,int x,int y,int width,int height,
@@ -207,12 +248,12 @@ Character* character_new(char* name,int HP,int MP,int ATK,int DEF,int x,int y,in
 
 int character_attack(Character* character,int way,int hurt)
 {
-    int i,j;
-    
     if(character->man->state[MAN_STATE_DIE])
-    {
         return 0;
-    }
+    if(character->man->state[MAN_STATE_HURT])
+        return 0;
+    
+    int i,j;
     
     character->man->state[MAN_STATE_WALK] = 0;
     character->man->state[MAN_STATE_RUN] = 0;
@@ -301,74 +342,20 @@ int character_attack_skill(Character* character,int way)
     //         int x2,int y2,int width2,int height2)
 }
 
-int character_attack_skill_distance(Character* character,int way,int hurt,int speed,Skill_Object* skill,SDL_Renderer* renderer)
+int character_attack_skill_distance(Character* character,Skill_Object* skill,int way)
 {
+    if(character->man->state[MAN_STATE_DIE])
+        return 0;
+    if(character->man->state[MAN_STATE_HURT])
+        return 0;
+    
     if(skill == NULL)
         return 0;
-
-    character->state[CHARACTER_STATE_ATTACK_SKILL_DISTANCE] = 1;
     
-    if(skill_object_collision(skill))
-    {
-        if(skill->characterN_change)
-        {
-            int hurt_man_N = character_information[skill->characterN][CHARACTER_INFORMATION_MAN_N];
-            
-            character_information[skill->characterN][CHARACTER_INFORMATION_HP] -= hurt;
-            man_information[hurt_man_N][MAN_INFORMATION_STATE_HURT] = 1;
-            character->state[CHARACTER_STATE_ATTACK_SKILL_DISTANCE] = 0;
-            skill->characterN_change = 0;
-            skill->object->isRender = 0;
-        }
-        if(skill->objectN_change)
-        {
-            character->state[CHARACTER_STATE_ATTACK_SKILL_DISTANCE] = 0;
-            skill->objectN_change = 0;
-            skill->object->isRender = 0;
-        }
-        return 1;
-    }
-    else
-    {
-        skill_object_render(skill,way,renderer);
-        
-        if(way == WAY_LEFT)
-        {
-            skill->object->dx = -speed;
-            /*
-            if(skill->object->x <= )
-            {
-                character->state[CHARACTER_STATE_ATTACK_DISTANCE_SKILL] = 0;
-                skill->object->isRender = 0;
-                return 1;
-            }
-            */
-        }
-        
-        else if(way == WAY_RIGHT)
-        {
-            skill->object->dx = speed;
-            /*
-            if(skill->object->x >= )
-            {
-                character->state[CHARACTER_STATE_ATTACK_DISTANCE_SKILL] = 0;
-                skill->object->isRender = 0;
-                return 1;
-            }
-            */
-        }
-        
-        skill_object_updata(skill);
-        
-        /*
-        if(skill->object->y <= end_y)
-        {
-            character->state[CHARACTER_STATE_ATTACK_DISTANCE_SKILL] = 0;
-            skill->object->isRender = 0;
-            return 1;
-        }
-        */
-    }
+    skill->way = way;
+
+    character_information[character->N][CHARACTER_INFORMATION_STATE_ATTACK_SKILL_DISTANCE] = 1;
+    skill->userN = character->N;
     
     return 0;
 }
@@ -383,6 +370,9 @@ void character_updata(Character* character,SDL_Renderer* renderer)
     man_updata(character->man);
     character->HP = character_information[character->N][CHARACTER_INFORMATION_HP];
     character->MP = character_information[character->N][CHARACTER_INFORMATION_MP];
+    
+    character->state[CHARACTER_STATE_ATTACK_SKILL_DISTANCE] = 
+    character_information[character->N][CHARACTER_INFORMATION_STATE_ATTACK_SKILL_DISTANCE];
     
     if(character->HP <= 0)
         man_die(character->man);

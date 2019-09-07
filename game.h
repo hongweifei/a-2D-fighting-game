@@ -85,7 +85,7 @@ void init_game(SDL_Window* window)
     */
     
     skill = skill_object_new(200,500,character->man->width,character->man->height
-    ,"data/skill.bmp",renderer,0,0,0,0,init_spirit_rect(328/4,249/3,0,0,4,1));
+    ,5,5,"data/skill.bmp",renderer,0,0,0,0,init_spirit_rect(328/4,249/3,0,0,4,1));
 
     background = background_new("data/background.jpg",renderer,0,0,0,0);
     
@@ -157,6 +157,21 @@ void start_game()
             if(!character1->state[CHARACTER_STATE_ATTACK])
             {
                 character_attack(character1,character1->man->way,character1->ATK);
+            }
+        }
+        
+        if(state[SDL_SCANCODE_U])
+        {
+            if(!character->state[CHARACTER_STATE_ATTACK_SKILL_DISTANCE])
+            {
+                character_attack_skill_distance(character,skill,character->man->way);
+            }
+        }
+        if(state[SDL_SCANCODE_KP_4])
+        {
+            if(!character1->state[CHARACTER_STATE_ATTACK_SKILL_DISTANCE])
+            {
+                character_attack_skill_distance(character1,skill,character1->man->way);
             }
         }
         
@@ -271,7 +286,9 @@ void render()
         character_render(character1,character1->man->way,renderer,character1->texture,character1->man->spirit_rect,0,3);
     
     if(character->state[CHARACTER_STATE_ATTACK_SKILL_DISTANCE])
-        character_attack_skill_distance(character,attack_way,1,10,skill,renderer);
+        skill_object_render(skill,skill->way,renderer);
+    if(character1->state[CHARACTER_STATE_ATTACK_SKILL_DISTANCE])
+        skill_object_render(skill,skill->way,renderer);
 
     SDL_RenderPresent(renderer);
 }
